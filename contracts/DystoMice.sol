@@ -40,6 +40,7 @@ contract DystoMice is ERC721URIStorage, Ownable{
         baseURI = baseURI_;
         DysToken = tokenAddress;
     }
+
     function setTokenAddress(address token) external onlyOwner() {
         DysToken = token;
     }
@@ -51,21 +52,26 @@ contract DystoMice is ERC721URIStorage, Ownable{
         require(amount <= 8000, "too many dummy");
         totalCount = amount;
     }
+
     function totalMiceMinted() public view virtual returns (uint256) {
         return totalMice;
     }
+
     function totalSupply() public view virtual returns (uint256) {
         return totalCount;
     }
     function _baseURI() internal view virtual override returns (string memory){
         return baseURI;
     }
+
     function setBaseURI(string memory _newURI) public onlyOwner {
         baseURI = _newURI;
     }
+
     function changePrice(uint256 _newPrice) public onlyOwner {
         price = _newPrice;
     }
+
     function changeBatchSize(uint256 _newBatch) public onlyOwner {
         maxBatch = _newBatch;
     }
@@ -74,6 +80,7 @@ contract DystoMice is ERC721URIStorage, Ownable{
         _burn(tokenId);
         IDysToken(DysToken).mint(msg.sender);
     }
+
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
         
@@ -81,34 +88,35 @@ contract DystoMice is ERC721URIStorage, Ownable{
         return bytes(base).length > 0
             ? string(abi.encodePacked(base, tokenId.toString(), ".json")) : '.json';
     }
+
     function setTokenURI(uint256 _tokenId, string memory _tokenURI) public onlyOwner {
         _setTokenURI(_tokenId, _tokenURI);
     }
+
     function setStart(bool _start) public onlyOwner {
         started = _start;
     }
+
     function devMint(uint256 _times) public onlyOwner {
         emit MintMice(_msgSender(), totalMice+1, _times);
         for(uint256 i=0; i<_times; i++) {
             _mint(_msgSender(), 1 + totalMice++);
         }
     }
+
     function mintMiceWithToken(uint256 amount) payable public {
-        console.log("token amount:", amount);
         require(totalCount > 3000);
         require(amount >= 5000000000000000000000);
         IDysToken(DysToken).transfer(address(this), amount);
         _mint(_msgSender(), 1 + totalMice++);
     }
+    
     function mintMice(uint256 _times) payable public {
         require(started, "not started");
         require(_times >0 && _times <= maxBatch, "wake wrong number");
         require(totalMice + _times <= totalCount, "wake too much");
 
-        // msg.value is automatically set to the amount of ether sent with that payable function.
-        //console.log("msg.value: ", msg.value);
-        //console.log("_times * price: ", _times * price);
-        //console.log("equals?: ", msg.value == _times * price);
+        // msg.value is automatically set to the amount of ether sent with the payable function.
         require(msg.value == _times * price, "value error");
         payable(owner()).transfer(msg.value);
         emit MintMice(_msgSender(), totalMice+1, _times);
