@@ -107,10 +107,17 @@ contract DystoMice is ERC721URIStorage, Ownable{
     function mintMiceWithToken(uint256 amount) payable public {
         require(totalCount > 3000);
         require(amount >= 5000000000000000000000);
+        console.log("to:", address(this));
+        console.log("from:", _msgSender());
+        console.log("balance of sender:", IDysToken(DysToken).balanceOf(_msgSender()));
+        console.log("balance of contract:", IDysToken(DysToken).balanceOf(address(this)));
+        //IDysToken(DysToken).transferFrom(_msgSender(), address(this), amount);
         IDysToken(DysToken).transfer(address(this), amount);
+        console.log("tokens transferred");
         _mint(_msgSender(), 1 + totalMice++);
+        console.log("mice minted");
     }
-    
+
     function mintMice(uint256 _times) payable public {
         require(started, "not started");
         require(_times >0 && _times <= maxBatch, "wake wrong number");
