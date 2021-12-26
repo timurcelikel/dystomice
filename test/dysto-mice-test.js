@@ -2,10 +2,12 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 let DysToken;
 let DystoMice;
-let accounts;
-let owner;
 let dys;
 let mice;
+let accounts;
+let contractOwnerAddress;
+let tokenContractAddress;
+let account1;
 
  beforeEach(async function () {
    
@@ -15,13 +17,6 @@ let mice;
     // Get the ContractFactory and Signers here.
     DystoMice = await ethers.getContractFactory("DystoMice");
 
-    accounts = await ethers.getSigners();
-
-    owner = accounts[0];
-    tokenContractOwner = accounts[1];
-    nonOwner = accounts[2];
-
-
     // To deploy our contract, we just have to call Token.deploy() and await
     // for it to be deployed(), which happens once its transaction has been mined.
     mice = await DystoMice.deploy(
@@ -29,6 +24,11 @@ let mice;
       "DYSTOMICE", 
       "ipfs://QmXHaUaMwr7hPsKZvLkZhKznvjqx1pZphAEo85BzzgyWPs/", 
       dys.address);
+
+      accounts = await ethers.getSigners();
+      contractOwnerAddress = mice.address;
+      tokenContractAddress = dys.address;
+      account1 = accounts[0];
 });
 
 describe("DystoMice Test Initial Total Supply", function () {
@@ -53,31 +53,31 @@ describe("DystoMice Test Increase Total Supply", function () {
     // Can only increase total supply after initial mice are all minted
     await mice.increaseTotalSupply(8000);
 
-    expect(await mice.connect(nonOwner).totalSupply()).to.equal(8000);
+    expect(await mice.connect(account1).totalSupply()).to.equal(8000);
   });
 });
 
 describe("DystoMice Test Mint With Token", function () {
- 
+  // Transfer uses the contract address to send tokens from and not the sender for some reason.
+  // TransferFrom uses the sender and also requires token spend approval
   it("should mint a mouse with token", async function () {
   
     // List all account addresses
     //accounts.forEach(element => console.log(element.address));
 
-    await dys.mint(mice.address); // Mints 10000000000000000000000 or 10,000 DysToken
-    await dys.mint(owner.address); // Mints 10000000000000000000000 or 10,000 DysToken
-    await dys.mint(nonOwner.address); // Mints 10000000000000000000000 or 10,000 DysToken
-    await dys.mint(dys.address); // Mints 10000000000000000000000 or 10,000 DysToken
+    //await dys.mint(account1.address);
+    await dys.mint(contractOwnerAddress); // Mints 10000000000000000000000 or 10,000 DysToken
 
-    console.log("Contract owner address:", mice.address);
-    console.log("Token contract owner address:", dys.address);
-    console.log("Owner address:", owner.address);
-    console.log("non-owner address:", nonOwner.address);
+    /* Debug
+    console.log("Contract owner address:", contractOwnerAddress);
+    console.log("Token contract owner address:", tokenContractAddress);
+    console.log("account1 address:", account1.address);
 
-    console.log("DysToken owned by contract owner: ", await dys.balanceOf(mice.address));
-    console.log("DysToken owned by token contract: ", await dys.balanceOf(dys.address));
-    console.log("DysToken owned by owner: ", await dys.balanceOf(owner.address));
-    console.log("DysToken owned by non-owner: ", await dys.balanceOf(nonOwner.address));
+    console.log("DysToken owned by contract owner: ", await dys.balanceOf(contractOwnerAddress));
+    console.log("DysToken owned by token contract: ", await dys.balanceOf(tokenContractAddress));
+    console.log("DysToken owned by account1: ", await dys.balanceOf(account1.address));
+    */
+
     await mice.setStart(true);
 
     // Mint all mice (had to change totalCount to 30)
@@ -88,15 +88,34 @@ describe("DystoMice Test Mint With Token", function () {
     // Can only increase total supply after initial mice are all minted
     await mice.increaseTotalSupply(8000);
 
-    // Mintable for 5,000 DysToken once original mice have all been minted
-    dys.approve(dys.address, "5000000000000000000000");
-    dys.connect(nonOwner).approve(dys.address, "5000000000000000000000");
+    // Approve amount for connected account to recipient - only needed for transferFrom()
+    dys.connect(account1).approve(contractOwnerAddress, "10000000000000000000000");
 
-    //await mice.mintMiceWithToken("5000000000000000000000", { value: "5000000000000000000000"}); // 5,000 DysToken
-    await mice.connect(nonOwner).mintMiceWithToken("5000000000000000000000", { value: "5000000000000000000000"}); // 5,000 DysToken
-    //await mice.connect(nonOwner).mintMiceWithToken("5000000000000000000000"); // 5,000 DysToken
+    await mice.connect(account1).mintMiceWithToken("5000000000000000000000"); // 5,000 DysToken
 
     expect(await mice.totalMiceMinted()).to.equal(31);
+  });
+});
+
+describe("DystoMice Test Mint With Token No Balance", function () {
+  it("should revert with not enough token", async function () {
+  
+    // No token no mouse
+    //await dys.mint(contractOwnerAddress); 
+    await mice.setStart(true);
+
+    // Mint all mice (had to change totalCount to 30)
+    for (let i = 0; i < 30; i++) {
+      await mice.mintMice(1, { value: ethers.utils.parseEther(".02")});
+    }
+
+    // Can only increase total supply after initial mice are all minted
+    await mice.increaseTotalSupply(8000);
+
+    // Approve amount for connected account to recipient - only needed for transferFrom()
+    dys.connect(account1).approve(contractOwnerAddress, "10000000000000000000000");
+    
+    await expect(mice.connect(account1).mintMiceWithToken("5000000000000000000000")).to.be.revertedWith('ERC20: transfer amount exceeds balance');
   });
 });
   
@@ -117,8 +136,8 @@ describe("DystoMice Test Mint Started Non-Owner Not Allowed", function () {
 
   it("should fail with non-owner", async function () {
 
-    // Non-Owner   
-    await expect(mice.connect(nonOwner).setStart(true)).to.be.revertedWith('Ownable: caller is not the owner');
+    // Non-Owner - I guess accounts[0] is always mapped to onlyOwner in test functions
+    await expect(mice.connect(accounts[1]).setStart(true)).to.be.revertedWith('Ownable: caller is not the owner');
   });
 });
 

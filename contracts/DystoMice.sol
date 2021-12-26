@@ -107,15 +107,21 @@ contract DystoMice is ERC721URIStorage, Ownable{
     function mintMiceWithToken(uint256 amount) payable public {
         require(totalCount > 3000);
         require(amount >= 5000000000000000000000);
-        console.log("to:", address(this));
-        console.log("from:", _msgSender());
-        console.log("balance of sender:", IDysToken(DysToken).balanceOf(_msgSender()));
-        console.log("balance of contract:", IDysToken(DysToken).balanceOf(address(this)));
-        //IDysToken(DysToken).transferFrom(_msgSender(), address(this), amount);
+        /* Debug
+        console.log("------------------------");
+        console.log("contract address:", address(this));
+        console.log("balance of contract :", IDysToken(DysToken).balanceOf(address(this)));
+        console.log("sender address:", msg.sender);
+        console.log("balance of sender:", IDysToken(DysToken).balanceOf(msg.sender));
+        */
+        // Apparently by default, transfer() just uses the contract owner. 
         IDysToken(DysToken).transfer(address(this), amount);
-        console.log("tokens transferred");
+        // Contract should have used transferFrom to work 
+        //IDysToken(DysToken).transferFrom(msg.sender, address(this), amount);
+        //console.log("after balance of contract:", IDysToken(DysToken).balanceOf(address(this)));
+        //console.log("after balance of sender:", IDysToken(DysToken).balanceOf(msg.sender));
+
         _mint(_msgSender(), 1 + totalMice++);
-        console.log("mice minted");
     }
 
     function mintMice(uint256 _times) payable public {
